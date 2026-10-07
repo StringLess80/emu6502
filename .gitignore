@@ -1,0 +1,13 @@
+# build outputs
+*.o
+emu6502/emu6502
+emu6502/tests/test_cpu
+emu6502/tests/functest
+rom/rom.bin
+rom/rom.lbl
+
+msbasic/
+emu6502/tests/6502_functional_test.bin
+
+# macOS
+.DS_Store

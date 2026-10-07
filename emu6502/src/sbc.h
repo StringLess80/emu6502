@@ -1,0 +1,44 @@
+/*
+ * sbc.h - The 6502 single-board computer.
+ *
+ * Memory map. Both halves of the 74HC139 are used: the first decodes
+ * A15 A14, the second (enabled by the first's $4000 output) decodes
+ * A13 A12.
+ *
+ *   $0000-$3FFF  RAM   HM62256, 16 KiB (A14 of the chip tied low)
+ *   $4000-$4FFF  -     free (nothing answers, reads $FF)
+ *   $5000-$5FFF  ACIA  6551, 4 registers, mirrored
+ *   $6000-$6FFF  VIA   6522, 16 registers, mirrored
+ *   $7000-$7FFF  -     free (expansion)
+ *   $8000-$FFFF  ROM   AT28C256, all 32 KiB
+ */
+#ifndef SBC_H
+#define SBC_H
+
+#include <stdint.h>
+
+#include "acia.h"
+#include "bus.h"
+#include "via.h"
+
+#define RAM_SIZE   0x4000   /* 16 KiB */
+#define ROM_SIZE   0x8000   /* 32 KiB */
+#define ROM_START  0x8000
+
+struct Bus {
+    uint8_t ram[RAM_SIZE];
+    uint8_t rom[ROM_SIZE];
+    Via     via;
+    Acia    acia;
+};
+
+/* Fill RAM with zeros, erase the ROM, reset the chips. */
+void sbc_init(Bus *sbc);
+
+/* Press the reset button: reset the chips, keep RAM and ROM. */
+void sbc_reset_chips(Bus *sbc);
+
+/* Write a byte like an EPROM programmer would: ROM is writable too. */
+void sbc_load_byte(Bus *sbc, uint16_t addr, uint8_t value);
+
+#endif /* SBC_H */
