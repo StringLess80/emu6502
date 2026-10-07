@@ -7,8 +7,8 @@
 
 enum { CHIP_RAM, CHIP_VIA, CHIP_ACIA, CHIP_ROM, CHIP_NONE };
 
-/* What the 74HC139 does: the first half looks at A15 A14, and its
- * $4000 output enables the second half, which looks at A13 A12. */
+/* A15 A14 select a 16 KiB block; inside the $4000 block, A13 A12
+ * select a 4 KiB I/O slot. */
 static int select_chip(uint16_t addr)
 {
     switch (addr >> 14) {                 /* A15 A14 */
@@ -28,7 +28,7 @@ static int select_chip(uint16_t addr)
 void sbc_init(Bus *sbc)
 {
     memset(sbc->ram, 0, sizeof sbc->ram);
-    memset(sbc->rom, 0xFF, sizeof sbc->rom);   /* an erased EEPROM */
+    memset(sbc->rom, 0xFF, sizeof sbc->rom);   /* empty ROM reads $FF */
     sbc_reset_chips(sbc);
 }
 
@@ -45,7 +45,7 @@ uint8_t bus_read(Bus *sbc, uint16_t addr)
     case CHIP_VIA:  return via_read(&sbc->via, (uint8_t)(addr & 0x0F));
     case CHIP_ACIA: return acia_read(&sbc->acia, (uint8_t)(addr & 0x03));
     case CHIP_ROM:  return sbc->rom[addr & (ROM_SIZE - 1)];
-    default:        return 0xFF;   /* nothing answers: pull-ups give $FF */
+    default:        return 0xFF;   /* nothing answers: reads $FF */
     }
 }
 
@@ -73,7 +73,7 @@ void bus_write(Bus *sbc, uint16_t addr, uint8_t value)
         acia_write(&sbc->acia, (uint8_t)(addr & 0x03), value);
         break;
     default:
-        /* ROM (WE tied to +5V) or nothing: writes are lost. */
+        /* ROM is read-only, and nothing answers in the free slots. */
         break;
     }
 }

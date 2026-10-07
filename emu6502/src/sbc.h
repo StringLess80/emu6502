@@ -1,16 +1,14 @@
 /*
- * sbc.h - The 6502 single-board computer.
+ * sbc.h - The emulated 6502 single-board computer.
  *
- * Memory map. Both halves of the 74HC139 are used: the first decodes
- * A15 A14, the second (enabled by the first's $4000 output) decodes
- * A13 A12.
+ * Memory map:
  *
- *   $0000-$3FFF  RAM   HM62256, 16 KiB (A14 of the chip tied low)
+ *   $0000-$3FFF  RAM   16 KiB
  *   $4000-$4FFF  -     free (nothing answers, reads $FF)
  *   $5000-$5FFF  ACIA  6551, 4 registers, mirrored
  *   $6000-$6FFF  VIA   6522, 16 registers, mirrored
- *   $7000-$7FFF  -     free (expansion)
- *   $8000-$FFFF  ROM   AT28C256, all 32 KiB
+ *   $7000-$7FFF  -     free (nothing answers, reads $FF)
+ *   $8000-$FFFF  ROM   32 KiB
  */
 #ifndef SBC_H
 #define SBC_H

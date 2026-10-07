@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build rom.bin for the 6502 board.
+# Build rom.bin, the emulator's ROM.
 #   MSBASIC: folder of a clone of https://github.com/mist64/msbasic
 #   ca65 and ld65 from cc65 must be on the PATH.
 set -e

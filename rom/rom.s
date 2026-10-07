@@ -1,4 +1,4 @@
-; rom.s - The 32 KiB ROM of the 6502 board: MS BASIC, a BIOS and WozMon.
+; rom.s - The emulator's 32 KiB ROM: MS BASIC, a BIOS and WozMon.
 ;
 ; Build (see build.sh):
 ;   ca65 -D osi -I <msbasic folder> rom.s -o rom.o
@@ -116,7 +116,7 @@ BAS_COUT:
         and     #$7F
         jmp     CHROUT
 
-; LOAD and SAVE are not supported (no tape on this board).
+; LOAD and SAVE are not supported.
 BAS_LOADSAVE:
         rts
 

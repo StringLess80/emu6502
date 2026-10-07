@@ -2,9 +2,9 @@
 
 # 🖥️ emu6502
 
-**An emulator of a homemade 6502 single-board computer, written in C**
+**A 6502 single-board computer emulator, written in C**
 
-emu6502 emulates a 6502 single-board computer: the CPU, 16 KiB of RAM, 32 KiB of ROM, a 6551 ACIA serial port and a 6522 VIA. It runs the board's EEPROM image unmodified, at the board's real speed, in your terminal. The included ROM boots WozMon and Microsoft BASIC.
+emu6502 emulates a small 6502 computer: the CPU, 16 KiB of RAM, 32 KiB of ROM, a 6551 ACIA serial port and a 6522 VIA. It runs at 1 MHz in your terminal, and the included ROM boots WozMon and Microsoft BASIC.
 
 <br/>
 
@@ -28,7 +28,7 @@ emu6502 emulates a 6502 single-board computer: the CPU, 16 KiB of RAM, 32 KiB of
 |  |  |
 |---|---|
 | 🧠 **CPU** | NMOS 6502 core: all 151 official opcodes, decimal mode, the NMOS quirks, per-instruction cycle counts |
-| 🗺️ **Memory** | 16 KiB RAM · 32 KiB ROM · I/O at `$5000` and `$6000`, decoded like the board's 74HC139 |
+| 🗺️ **Memory** | 16 KiB RAM · 32 KiB ROM · ACIA at `$5000` · VIA at `$6000` |
 | 📡 **Serial** | 6551 ACIA wired to your terminal in raw mode |
 | 🔌 **I/O** | 6522 VIA: both ports and both timers, with a live display of the port pins |
 | ⏱️ **Timing** | Runs at 1 MHz in real time by default; any clock speed, or unlimited |
@@ -38,14 +38,14 @@ emu6502 emulates a 6502 single-board computer: the CPU, 16 KiB of RAM, 32 KiB of
 | 🛠️ **Tooling** | C11 + POSIX, a plain Makefile, no libraries beyond libc |
 
 > [!NOTE]
-> The emulator is accurate to the instruction, not to the cycle. Each instruction takes the right number of cycles, but the dummy reads and double writes inside NMOS instructions are not reproduced. Nothing on the board depends on them. See [Known limitations](#-known-limitations).
+> The emulator is accurate to the instruction, not to the cycle. Each instruction takes the right number of cycles, but the dummy reads and double writes inside NMOS instructions are not reproduced. Nothing in the emulated system depends on them. See [Known limitations](#-known-limitations).
 
 ## 📑 Table of contents
 
 - [Demo](#-demo)
 - [Architecture](#️-architecture)
 - [Repository layout](#-repository-layout)
-- [Emulated hardware](#-emulated-hardware)
+- [Emulated system](#-emulated-system)
 - [Getting started](#-getting-started)
 - [Usage](#-usage)
 - [Testing](#-testing)
@@ -91,7 +91,7 @@ A machine-language program typed into WozMon, printing through the BIOS `CHROUT`
 
 ## 🏗️ Architecture
 
-The CPU knows nothing about the board. It reads and writes through the three functions of `bus.h`. The same `cpu.c` is linked with `sbc.c` in the emulator, and with a flat 64 KiB test bus in the test programs.
+The CPU knows nothing about the rest of the system. It reads and writes through the three functions of `bus.h`. The same `cpu.c` is linked with `sbc.c` in the emulator, and with a flat 64 KiB test bus in the test programs.
 
 ```mermaid
 flowchart LR
@@ -143,10 +143,10 @@ emu6502/
 │   ├── sbc6502.cfg            ld65 memory layout
 │   └── build.sh               Builds rom.bin
 └── docs/
-    └── 6502-board.md          Hardware: memory map, decoder wiring, ROM layout
+    └── rom.md                 Memory map, I/O registers, ROM layout, BIOS
 ```
 
-## 🔧 Emulated hardware
+## 🔧 Emulated system
 
 ### Memory map
 
@@ -159,7 +159,7 @@ emu6502/
 | `$7000-$7FFF` | — | Free, reads `$FF` |
 | `$8000-$FFFF` | ROM, 32 KiB | Writes from the CPU are ignored |
 
-The decoder mirrors the I/O chips across their whole 4 KiB window, exactly as the 74HC139 does on the board. The wiring is in [`docs/6502-board.md`](docs/6502-board.md).
+Each I/O device answers anywhere in its 4 KiB slot: the ACIA's 4 registers and the VIA's 16 repeat across the whole window. The register list is in [`docs/rom.md`](docs/rom.md).
 
 ### CPU
 
@@ -232,7 +232,7 @@ cd rom
 MSBASIC=../msbasic ./build.sh                  # makes rom.bin, 32768 bytes
 ```
 
-`rom.bin` is also the image to burn into the board's AT28C256: offset 0 of the file is `$8000`.
+Offset 0 of `rom.bin` is `$8000`. The ROM layout and the BIOS entry points are described in [`docs/rom.md`](docs/rom.md).
 
 </details>
 
@@ -325,9 +325,9 @@ The core also passes the functional test under `-fsanitize=address,undefined`.
 
 | # | Limitation | Impact |
 |:---:|---|---|
-| 1 | **No hardware interrupts.** IRQ and NMI are never generated; `BRK`/`RTI` work | Interrupt-driven code won't run |
-| 2 | **Instruction-level timing.** No dummy reads or double writes inside instructions; the VIA timers advance once per instruction | I/O registers that react to those extra accesses behave differently. None on this board do |
-| 3 | **Instant serial transmit.** No baud-rate timing; TDRE is always set | Software that relies on transmit delays runs faster than on hardware |
+| 1 | **No device interrupts.** The ACIA and VIA never raise IRQ, and nothing raises NMI; `BRK`/`RTI` work | Interrupt-driven code won't run |
+| 2 | **Instruction-level timing.** No dummy reads or double writes inside instructions; the VIA timers advance once per instruction | I/O registers that react to those extra accesses behave differently. The emulated ACIA and VIA don't |
+| 3 | **Instant serial transmit.** No baud-rate timing; TDRE is always set | Software that relies on transmit delays runs faster than on a real 6551 |
 | 4 | **Partial 6522.** Shift register, handshake lines (CA/CB) and timer 2 pulse counting are stored but have no effect | Programs using them won't see results |
 | 5 | **Undocumented opcodes halt** the CPU | Code relying on illegal opcodes stops |
 | 6 | **POSIX only.** The terminal module uses `termios` and `poll` | Native Windows needs WSL, or a `terminal.c` port |
