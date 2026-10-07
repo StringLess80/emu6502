@@ -855,16 +855,18 @@
 
   let started = false;
   try {
-    const saved = localStorage.getItem(ROM_KEY);
-    if (saved) started = loadRom(Uint8Array.from(atob(saved), (c) => c.charCodeAt(0)), false);
-  } catch (_) { /* no storage */ }
+    // When the page is served over http (GitHub Pages, a local server),
+    // a rom.bin next to it is loaded first.
+    const res = await fetch("rom.bin", { cache: "no-cache" });
+    if (res.ok) started = loadRom(new Uint8Array(await res.arrayBuffer()), false);
+  } catch (_) { /* opened from disk, or no rom.bin */ }
 
   if (!started) {
+    // Otherwise, the ROM loaded by hand last time.
     try {
-      // When the page is served over http, a rom.bin next to it loads by itself.
-      const res = await fetch("rom.bin");
-      if (res.ok) started = loadRom(new Uint8Array(await res.arrayBuffer()));
-    } catch (_) { /* opened from disk, or no rom.bin */ }
+      const saved = localStorage.getItem(ROM_KEY);
+      if (saved) started = loadRom(Uint8Array.from(atob(saved), (c) => c.charCodeAt(0)), false);
+    } catch (_) { /* no storage */ }
   }
 
   if (!started) {

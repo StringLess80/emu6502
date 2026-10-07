@@ -1,0 +1,62 @@
+# Publish the web interface on GitHub Pages at every push to main.
+#
+# The site is built from scratch each time: the WebAssembly core is
+# compiled from the C sources, and rom.bin (WozMon + MS BASIC) is
+# assembled with cc65, so the published emulator boots by itself.
+name: Publish web emulator
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang, lld and cc65
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld cc65
+
+      - name: Build the WebAssembly core
+        run: web/wasm/build.sh
+
+      - name: Build the ROM
+        run: |
+          git clone --depth 1 https://github.com/mist64/msbasic
+          cd rom
+          MSBASIC=../msbasic ./build.sh
+
+      - name: Assemble the site
+        run: |
+          mkdir site
+          cp -r web/index.html web/app.js web/style.css web/emu-wasm.js web/fonts site/
+          cp rom/rom.bin site/rom.bin
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

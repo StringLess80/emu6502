@@ -12,6 +12,7 @@ emu6502 emulates a small 6502 computer: the CPU, 16 KiB of RAM, 32 KiB of ROM, a
 ![CPU](https://img.shields.io/badge/CPU-NMOS%206502-8A2BE2?style=for-the-badge)
 ![Tests](https://img.shields.io/badge/Klaus%20Dormann%20test-passing-2ea44f?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Linux%20%C2%B7%20macOS%20%C2%B7%20WSL-informational?style=for-the-badge)
+[![Web](https://img.shields.io/badge/run%20in%20browser-WebAssembly-654FF0?style=for-the-badge&logo=webassembly&logoColor=white)](https://stringless80.github.io/emu6502/)
 
 ![Dependencies](https://img.shields.io/badge/dependencies-none-lightgrey)
 ![Size](https://img.shields.io/badge/source-~2200%20lines-lightgrey)
@@ -21,7 +22,9 @@ emu6502 emulates a small 6502 computer: the CPU, 16 KiB of RAM, 32 KiB of ROM, a
 
 <br/>
 
-![emu6502 running Microsoft BASIC in the web interface](docs/images/emu6502.png)
+### [▶ Run it in your browser](https://stringless80.github.io/emu6502/)
+
+[![emu6502 running Microsoft BASIC in the web interface](docs/images/emu6502.png)](https://stringless80.github.io/emu6502/)
 
 </div>
 
@@ -143,6 +146,8 @@ emu6502/
 │       ├── test_cpu.c         Unit tests for single instructions
 │       ├── functest.c         Runner for Klaus Dormann's 6502 functional test
 │       └── flatbus.c / .h     64 KiB flat-RAM bus for the tests
+├── .github/workflows/
+│   └── pages.yml              Builds and publishes the web emulator
 ├── web/
 │   ├── index.html             The web interface
 │   ├── app.js / style.css     Terminal, panels, keyboard, file loading
@@ -351,11 +356,22 @@ You can also drop files on the page.
 
 <br/>
 
-Open `web/index.html` in a browser, straight from disk, and load `rom.bin` with **Load ROM**. Nothing needs to be installed or served.
+**Online:** [stringless80.github.io/emu6502](https://stringless80.github.io/emu6502/). It boots straight into WozMon; type `8000R` for BASIC.
 
-If the page is served over HTTP (for example with `python3 -m http.server` in `web/`, or GitHub Pages), a `rom.bin` placed next to `index.html` loads by itself.
+**From disk:** open `web/index.html` in a browser and load `rom.bin` with **Load ROM**. Nothing needs to be installed or served.
 
-To rebuild the WebAssembly core after changing the C sources, you need clang and wasm-ld (LLVM), and nothing else: no Emscripten, no C library.
+**From a local server:** serve `web/` (for example `python3 -m http.server`), and a `rom.bin` placed next to `index.html` loads by itself.
+
+</details>
+
+<details>
+<summary><b>How the site is published</b></summary>
+
+<br/>
+
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) runs on every push to `main`. It compiles the WebAssembly core from the C sources, assembles `rom.bin` from WozMon and the [mist64/msbasic](https://github.com/mist64/msbasic) sources with cc65, and publishes `web/` with the ROM on GitHub Pages. The ROM is built during publishing and is not stored in the repository.
+
+To rebuild the WebAssembly core locally after changing the C sources, you need clang and wasm-ld (LLVM), and nothing else: no Emscripten, no C library.
 
 ```bash
 web/wasm/build.sh                              # writes web/emu-wasm.js
