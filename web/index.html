@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>emu6502</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="bar">
+  <h1 class="brand">emu6502</h1>
+
+  <div class="controls" role="toolbar" aria-label="Execution">
+    <button id="btn-run" class="key key-primary" title="Run or pause (F9)">Run</button>
+    <button id="btn-step" class="key" title="Execute one instruction (F7)">Step</button>
+    <button id="btn-over" class="key" title="Step over a JSR (F8)">Step over</button>
+    <button id="btn-reset" class="key" title="Press the reset button: RAM is kept">Reset</button>
+    <button id="btn-power" class="key" title="Power cycle: clears RAM">Power cycle</button>
+  </div>
+
+  <label class="field">
+    <span>Clock</span>
+    <select id="speed">
+      <option value="100000">100 kHz</option>
+      <option value="1000000" selected>1 MHz</option>
+      <option value="2000000">2 MHz</option>
+      <option value="4000000">4 MHz</option>
+      <option value="0">Unlimited</option>
+    </select>
+  </label>
+
+  <div class="files">
+    <button id="btn-rom" class="key">Load ROM</button>
+    <button id="btn-prog" class="key">Load program</button>
+    <label class="field">
+      <span>at $</span>
+      <input id="prog-addr" value="0300" size="4" maxlength="4" spellcheck="false" aria-label="Address for binary programs">
+    </label>
+    <input id="file-rom" type="file" accept=".bin,.rom,.out" hidden>
+    <input id="file-prog" type="file" accept=".bin,.hex,.txt" hidden>
+  </div>
+
+  <p id="status" class="status" role="status">Starting</p>
+</header>
+
+<main class="desk">
+
+  <section class="screen-area" aria-label="Terminal">
+    <div class="bezel">
+      <div id="term" class="screen" tabindex="0" aria-label="Terminal: click and type">
+        <pre id="term-history" class="term-history"></pre>
+        <pre id="term-grid" class="term-grid"></pre>
+        <div id="term-empty" class="term-empty" hidden>
+          <p>No ROM loaded.</p>
+          <p>Build <code>rom.bin</code> with <code>rom/build.sh</code>, then drop it on this page or <button id="btn-rom-2" class="linkish">choose the file</button>.</p>
+        </div>
+      </div>
+    </div>
+    <div class="screen-foot">
+      <label class="check"><input id="upcase" type="checkbox" checked> Capitals only</label>
+      <span id="term-hint" class="hint">Click the screen to type. Ctrl+C goes to the 6502.</span>
+      <span id="keyq" class="hint"></span>
+    </div>
+  </section>
+
+  <section class="panel memory" aria-labelledby="mem-title">
+    <div class="panel-head">
+      <h2 id="mem-title">Memory</h2>
+      <label class="field"><span>$</span><input id="mem-addr" value="0000" size="4" maxlength="4" spellcheck="false" aria-label="Start address"></label>
+      <div class="presets" role="group" aria-label="Jump to">
+        <button class="chip" data-addr="0000">Zero page</button>
+        <button class="chip" data-addr="0100">Stack</button>
+        <button class="chip" data-addr="0200">Page 2</button>
+        <button class="chip" data-addr="0300">$0300</button>
+        <button class="chip" data-addr="5000">ACIA</button>
+        <button class="chip" data-addr="6000">VIA</button>
+        <button class="chip" data-addr="8000">ROM</button>
+        <button class="chip" data-addr="FF00">Vectors</button>
+      </div>
+    </div>
+    <div id="mem" class="hex" role="grid" aria-label="Memory contents"></div>
+    <p class="hint">Click a byte to change it. Bytes that just changed are lit.</p>
+  </section>
+
+  <aside class="side">
+
+    <section class="panel" aria-labelledby="cpu-title">
+      <div class="panel-head"><h2 id="cpu-title">CPU</h2><span id="cycles" class="meta"></span></div>
+      <div class="regs">
+        <div class="reg reg-wide"><span class="reg-name">PC</span><span id="r-pc" class="reg-val">0000</span></div>
+        <div class="reg"><span class="reg-name">A</span><span id="r-a" class="reg-val">00</span></div>
+        <div class="reg"><span class="reg-name">X</span><span id="r-x" class="reg-val">00</span></div>
+        <div class="reg"><span class="reg-name">Y</span><span id="r-y" class="reg-val">00</span></div>
+        <div class="reg"><span class="reg-name">SP</span><span id="r-sp" class="reg-val">00</span></div>
+        <div class="reg"><span class="reg-name">P</span><span id="r-p" class="reg-val">00</span></div>
+      </div>
+      <div id="flags" class="flags" aria-label="Status flags"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="dis-title">
+      <div class="panel-head">
+        <h2 id="dis-title">Disassembly</h2>
+        <label class="field"><span>Break at $</span><input id="bp-addr" size="4" maxlength="4" spellcheck="false" aria-label="Add a breakpoint"></label>
+      </div>
+      <ol id="dis" class="dis"></ol>
+      <p class="hint">Click a line to set or clear a breakpoint.</p>
+      <div id="bp-list" class="bp-list"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="stack-title">
+      <div class="panel-head"><h2 id="stack-title">Stack</h2><span id="stack-depth" class="meta"></span></div>
+      <ol id="stack" class="stack"></ol>
+    </section>
+
+    <section class="panel" aria-labelledby="io-title">
+      <div class="panel-head"><h2 id="io-title">I/O</h2></div>
+      <div class="io">
+        <div class="port"><span class="port-name">VIA port A</span><div id="led-a" class="leds"></div></div>
+        <div class="port"><span class="port-name">VIA port B</span><div id="led-b" class="leds"></div></div>
+        <dl id="via" class="kv"></dl>
+        <dl id="acia" class="kv"></dl>
+      </div>
+    </section>
+
+  </aside>
+</main>
+
+<script src="emu-wasm.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

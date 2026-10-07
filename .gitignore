@@ -5,7 +5,9 @@ emu6502/tests/test_cpu
 emu6502/tests/functest
 rom/rom.bin
 rom/rom.lbl
+web/wasm/emu.wasm
 
+# downloaded, not part of this project
 msbasic/
 emu6502/tests/6502_functional_test.bin
 

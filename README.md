@@ -19,6 +19,10 @@ emu6502 emulates a small 6502 computer: the CPU, 16 KiB of RAM, 32 KiB of ROM, a
 ![Repo size](https://img.shields.io/github/repo-size/StringLess80/emu6502)
 ![Stars](https://img.shields.io/github/stars/StringLess80/emu6502?style=social)
 
+<br/>
+
+![emu6502 running Microsoft BASIC in the web interface](docs/images/emu6502.png)
+
 </div>
 
 ---
@@ -35,6 +39,7 @@ emu6502 emulates a small 6502 computer: the CPU, 16 KiB of RAM, 32 KiB of ROM, a
 | 🔍 **Debugging** | Instruction trace with disassembly, registers, flags and cycle count |
 | 📦 **Loaders** | ROM images, raw binaries at any address, WozMon text files (`0300: A9 01 ...`) |
 | 💾 **ROM** | MS BASIC + BIOS + WozMon, built with cc65 |
+| 🌐 **Web UI** | The same C core in WebAssembly: terminal, registers, disassembly, breakpoints, stack, memory and I/O in the browser |
 | 🛠️ **Tooling** | C11 + POSIX, a plain Makefile, no libraries beyond libc |
 
 > [!NOTE]
@@ -48,6 +53,7 @@ emu6502 emulates a small 6502 computer: the CPU, 16 KiB of RAM, 32 KiB of ROM, a
 - [Emulated system](#-emulated-system)
 - [Getting started](#-getting-started)
 - [Usage](#-usage)
+- [Web interface](#-web-interface)
 - [Testing](#-testing)
 - [Known limitations](#-known-limitations)
 
@@ -137,13 +143,22 @@ emu6502/
 │       ├── test_cpu.c         Unit tests for single instructions
 │       ├── functest.c         Runner for Klaus Dormann's 6502 functional test
 │       └── flatbus.c / .h     64 KiB flat-RAM bus for the tests
+├── web/
+│   ├── index.html             The web interface
+│   ├── app.js / style.css     Terminal, panels, keyboard, file loading
+│   ├── emu-wasm.js            The C core as WebAssembly (generated)
+│   ├── fonts/                 VT323 and IBM Plex, self-hosted (OFL)
+│   └── wasm/
+│       ├── emu_wasm.c         Exports the core to JavaScript
+│       └── build.sh           Builds emu-wasm.js with clang
 ├── rom/
 │   ├── rom.s                  ROM top level: MS BASIC + BIOS + jump tables + vectors
 │   ├── wozmon.s               WozMon
 │   ├── sbc6502.cfg            ld65 memory layout
 │   └── build.sh               Builds rom.bin
 └── docs/
-    └── rom.md                 Memory map, I/O registers, ROM layout, BIOS
+    ├── rom.md                 Memory map, I/O registers, ROM layout, BIOS
+    └── images/                Screenshot
 ```
 
 ## 🔧 Emulated system
@@ -302,6 +317,48 @@ When standard input is not a terminal, keys are read from it. Combined with `--c
 ```bash
 printf '8000R\r\r\rPRINT 2^10\r' | ./emu6502 --rom rom.bin \
                                    --clock 0 --max-cycles 3000000
+```
+
+</details>
+
+## 🌐 Web interface
+
+The `web/` folder runs the emulator in a browser. It is not a rewrite: `web/wasm/build.sh` compiles the same `cpu.c`, `sbc.c`, `acia.c`, `via.c` and `opcodes.c` to WebAssembly, and JavaScript draws everything around them.
+
+| Panel | Shows |
+|---|---|
+| **Terminal** | The ACIA as an 80×24 screen. Type into it; paste works; Ctrl+C goes to the 6502. Handles CR, LF, backspace and the ANSI codes for clearing the screen and moving the cursor |
+| **CPU** | PC, A, X, Y, SP, P and each flag, with changed values lit, plus the cycle count and the measured clock speed |
+| **Disassembly** | The code around PC. Click a line to set a breakpoint; type an address to add one |
+| **Stack** | Page 1 from SP up, with JSR return addresses recognised |
+| **Memory** | 256 bytes in hex and ASCII, from any address. Changed bytes are lit; click a byte to edit it; scroll with the mouse wheel |
+| **I/O** | The VIA's port pins as LEDs, its timers and flags, and the ACIA's registers |
+
+| Control | Does |
+|---|---|
+| **Run / Pause** (F9) | Runs at the chosen clock: 100 kHz, 1, 2 or 4 MHz, or unlimited |
+| **Step** (F7) | Executes one instruction |
+| **Step over** (F8) | Runs a whole `JSR` and stops after it |
+| **Reset** | Resets the CPU and devices, keeps RAM |
+| **Power cycle** | Clears RAM and reloads the ROM |
+| **Load ROM** | A ROM image; it is remembered by the browser for next time |
+| **Load program** | A WozMon `.hex` file, or a `.bin` loaded at the address next to the button |
+
+You can also drop files on the page.
+
+<details open>
+<summary><b>Running it</b></summary>
+
+<br/>
+
+Open `web/index.html` in a browser, straight from disk, and load `rom.bin` with **Load ROM**. Nothing needs to be installed or served.
+
+If the page is served over HTTP (for example with `python3 -m http.server` in `web/`, or GitHub Pages), a `rom.bin` placed next to `index.html` loads by itself.
+
+To rebuild the WebAssembly core after changing the C sources, you need clang and wasm-ld (LLVM), and nothing else: no Emscripten, no C library.
+
+```bash
+web/wasm/build.sh                              # writes web/emu-wasm.js
 ```
 
 </details>
