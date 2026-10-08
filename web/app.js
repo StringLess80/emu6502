@@ -433,6 +433,7 @@
 
   function frame(now) {
     if (state.running) runFrame(now);
+    updateBarLeds();
     if (drainOutput() || term.dirty) {
       term.render();
       if (followOutput) termEl.scrollTop = termEl.scrollHeight;
@@ -547,6 +548,20 @@
   }
   const ledsA = makeLeds($("#led-a"));
   const ledsB = makeLeds($("#led-b"));
+  // The same LEDs again, in the top bar.
+  const barLedsA = makeLeds($("#bar-led-a"));
+  const barLedsB = makeLeds($("#bar-led-b"));
+  const barValA = $("#bar-val-a");
+  const barValB = $("#bar-val-b");
+
+  // Called every frame, so fast patterns stay visible while running.
+  function updateBarLeds() {
+    const a = E.emu_dev(DEV.PORTA), b = E.emu_dev(DEV.PORTB);
+    setLeds(barLedsA, a, E.emu_dev(DEV.DDRA));
+    setLeds(barLedsB, b, E.emu_dev(DEV.DDRB));
+    barValA.textContent = hex2(a);
+    barValB.textContent = hex2(b);
+  }
 
   function setReg(id, key, text) {
     const el = $(id);
