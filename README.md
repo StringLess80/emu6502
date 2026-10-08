@@ -10,8 +10,6 @@ emu6502 emulates a small 6502 computer: the CPU, 16 KiB of RAM, 32 KiB of ROM, a
 
 ![Language](https://img.shields.io/badge/C11-A8B9CC?style=for-the-badge&logo=c&logoColor=black)
 ![CPU](https://img.shields.io/badge/CPU-NMOS%206502-8A2BE2?style=for-the-badge)
-![Tests](https://img.shields.io/badge/Klaus%20Dormann%20test-passing-2ea44f?style=for-the-badge)
-![Platform](https://img.shields.io/badge/Linux%20%C2%B7%20macOS%20%C2%B7%20WSL-informational?style=for-the-badge)
 [![Web](https://img.shields.io/badge/run%20in%20browser-WebAssembly-654FF0?style=for-the-badge&logo=webassembly&logoColor=white)](https://stringless80.github.io/emu6502/)
 
 ![Dependencies](https://img.shields.io/badge/dependencies-none-lightgrey)
