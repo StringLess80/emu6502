@@ -30,7 +30,7 @@ typedef struct {
     uint16_t pc;       /* program counter                     */
 
     uint64_t cycles;   /* clock cycles since power-on         */
-    bool     halted;   /* true after an illegal opcode        */
+    bool     halted;   /* true after a JAM opcode (until reset) */
     Bus     *bus;      /* where memory and I/O live           */
 } Cpu;
 

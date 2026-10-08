@@ -28,7 +28,7 @@ typedef enum {
 } AddrMode;
 
 typedef struct {
-    const char *name;    /* "LDA", or NULL for an illegal opcode */
+    const char *name;    /* "LDA", "LAX", "JAM"...            */
     AddrMode    mode;
     uint8_t     cycles;  /* base number of clock cycles          */
 } OpInfo;

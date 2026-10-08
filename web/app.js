@@ -315,7 +315,7 @@
       state.lastFrame = performance.now();
       state.cycleCarry = 0;
       setStatus("Running");
-    } else if (!state.message.startsWith("Breakpoint") && !state.message.startsWith("Halted")) {
+    } else if (!state.message.startsWith("Breakpoint") && !state.message.startsWith("Jammed")) {
       setStatus(`Paused at $${hex4(E.emu_reg(REG.PC))}`, "stopped");
     }
     updateButtons();
@@ -340,7 +340,7 @@
   function haltedMessage() {
     const pc = E.emu_reg(REG.PC);
     state.running = false;
-    setStatus(`Halted: illegal opcode $${hex2(E.emu_peek(pc))} at $${hex4(pc)}. Press Reset.`, "error");
+    setStatus(`Jammed: JAM opcode $${hex2(E.emu_peek(pc))} at $${hex4(pc)}. Press Reset.`, "error");
     updateButtons();
   }
 

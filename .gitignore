@@ -3,6 +3,7 @@
 emu6502/emu6502
 emu6502/tests/test_cpu
 emu6502/tests/functest
+emu6502/tests/singlestep
 rom/rom.bin
 rom/rom.lbl
 web/wasm/emu.wasm
@@ -10,6 +11,7 @@ web/wasm/emu.wasm
 # downloaded, not part of this project
 msbasic/
 emu6502/tests/6502_functional_test.bin
+emu6502/tests/sst/
 
 # macOS
 .DS_Store

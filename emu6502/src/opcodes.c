@@ -1,10 +1,10 @@
 /*
- * opcodes.c - The table of all 151 official 6502 instructions.
+ * opcodes.c - The table of all 256 NMOS 6502 opcodes:
+ *               the 151 official ones and the 105 undocumented ones.
  *
  * The syntax [0xA9] = { ... } is a "designated initializer": it fills in
- * element 0xA9 of the array. Every element we do not mention is filled
- * with zeros, so its name is NULL - that is how we recognise an illegal
- * opcode.
+ * element 0xA9 of the array. Every element we do not mention would be
+ * filled with zeros (a NULL name), but here all 256 are filled in.
  */
 #include "opcodes.h"
 
@@ -135,6 +135,86 @@ const OpInfo OPCODES[256] = {
     [0xAA] = {"TAX", MODE_IMP,  2}, [0xA8] = {"TAY", MODE_IMP,  2},
     [0xBA] = {"TSX", MODE_IMP,  2}, [0x8A] = {"TXA", MODE_IMP,  2},
     [0x9A] = {"TXS", MODE_IMP,  2}, [0x98] = {"TYA", MODE_IMP,  2},
+
+    /* ============================================================ */
+    /* The 105 undocumented opcodes of the NMOS 6502                 */
+    /* ============================================================ */
+
+    /* SLO */
+    [0x07] = {"SLO", MODE_ZP,   5}, [0x17] = {"SLO", MODE_ZPX,  6},
+    [0x0F] = {"SLO", MODE_ABS,  6}, [0x1F] = {"SLO", MODE_ABSX, 7},
+    [0x1B] = {"SLO", MODE_ABSY, 7}, [0x03] = {"SLO", MODE_INDX, 8},
+    [0x13] = {"SLO", MODE_INDY, 8},
+    /* RLA */
+    [0x27] = {"RLA", MODE_ZP,   5}, [0x37] = {"RLA", MODE_ZPX,  6},
+    [0x2F] = {"RLA", MODE_ABS,  6}, [0x3F] = {"RLA", MODE_ABSX, 7},
+    [0x3B] = {"RLA", MODE_ABSY, 7}, [0x23] = {"RLA", MODE_INDX, 8},
+    [0x33] = {"RLA", MODE_INDY, 8},
+    /* SRE */
+    [0x47] = {"SRE", MODE_ZP,   5}, [0x57] = {"SRE", MODE_ZPX,  6},
+    [0x4F] = {"SRE", MODE_ABS,  6}, [0x5F] = {"SRE", MODE_ABSX, 7},
+    [0x5B] = {"SRE", MODE_ABSY, 7}, [0x43] = {"SRE", MODE_INDX, 8},
+    [0x53] = {"SRE", MODE_INDY, 8},
+    /* RRA */
+    [0x67] = {"RRA", MODE_ZP,   5}, [0x77] = {"RRA", MODE_ZPX,  6},
+    [0x6F] = {"RRA", MODE_ABS,  6}, [0x7F] = {"RRA", MODE_ABSX, 7},
+    [0x7B] = {"RRA", MODE_ABSY, 7}, [0x63] = {"RRA", MODE_INDX, 8},
+    [0x73] = {"RRA", MODE_INDY, 8},
+    /* DCP */
+    [0xC7] = {"DCP", MODE_ZP,   5}, [0xD7] = {"DCP", MODE_ZPX,  6},
+    [0xCF] = {"DCP", MODE_ABS,  6}, [0xDF] = {"DCP", MODE_ABSX, 7},
+    [0xDB] = {"DCP", MODE_ABSY, 7}, [0xC3] = {"DCP", MODE_INDX, 8},
+    [0xD3] = {"DCP", MODE_INDY, 8},
+    /* ISC */
+    [0xE7] = {"ISC", MODE_ZP,   5}, [0xF7] = {"ISC", MODE_ZPX,  6},
+    [0xEF] = {"ISC", MODE_ABS,  6}, [0xFF] = {"ISC", MODE_ABSX, 7},
+    [0xFB] = {"ISC", MODE_ABSY, 7}, [0xE3] = {"ISC", MODE_INDX, 8},
+    [0xF3] = {"ISC", MODE_INDY, 8},
+
+    /* LAX - LDA and LDX at once; LXA - unstable LAX # */
+    [0xA7] = {"LAX", MODE_ZP,   3}, [0xB7] = {"LAX", MODE_ZPY,  4},
+    [0xAF] = {"LAX", MODE_ABS,  4}, [0xBF] = {"LAX", MODE_ABSY, 4},
+    [0xA3] = {"LAX", MODE_INDX, 6}, [0xB3] = {"LAX", MODE_INDY, 5},
+    [0xAB] = {"LXA", MODE_IMM,  2},
+
+    /* SAX - store A AND X */
+    [0x87] = {"SAX", MODE_ZP,   3}, [0x97] = {"SAX", MODE_ZPY,  4},
+    [0x8F] = {"SAX", MODE_ABS,  4}, [0x83] = {"SAX", MODE_INDX, 6},
+
+    /* Immediate combinations */
+    [0x0B] = {"ANC", MODE_IMM,  2}, [0x2B] = {"ANC", MODE_IMM,  2},
+    [0x4B] = {"ALR", MODE_IMM,  2}, [0x6B] = {"ARR", MODE_IMM,  2},
+    [0xCB] = {"SBX", MODE_IMM,  2}, [0xEB] = {"SBC", MODE_IMM,  2},
+    [0x8B] = {"ANE", MODE_IMM,  2},
+
+    /* Stores ANDed with the address high byte, and LAS */
+    [0x93] = {"SHA", MODE_INDY, 6}, [0x9F] = {"SHA", MODE_ABSY, 5},
+    [0x9E] = {"SHX", MODE_ABSY, 5}, [0x9C] = {"SHY", MODE_ABSX, 5},
+    [0x9B] = {"TAS", MODE_ABSY, 5}, [0xBB] = {"LAS", MODE_ABSY, 4},
+
+    /* NOPs of every size */
+    [0x1A] = {"NOP", MODE_IMP,  2}, [0x3A] = {"NOP", MODE_IMP,  2},
+    [0x5A] = {"NOP", MODE_IMP,  2}, [0x7A] = {"NOP", MODE_IMP,  2},
+    [0xDA] = {"NOP", MODE_IMP,  2}, [0xFA] = {"NOP", MODE_IMP,  2},
+    [0x80] = {"NOP", MODE_IMM,  2}, [0x82] = {"NOP", MODE_IMM,  2},
+    [0x89] = {"NOP", MODE_IMM,  2}, [0xC2] = {"NOP", MODE_IMM,  2},
+    [0xE2] = {"NOP", MODE_IMM,  2}, [0x04] = {"NOP", MODE_ZP,   3},
+    [0x44] = {"NOP", MODE_ZP,   3}, [0x64] = {"NOP", MODE_ZP,   3},
+    [0x14] = {"NOP", MODE_ZPX,  4}, [0x34] = {"NOP", MODE_ZPX,  4},
+    [0x54] = {"NOP", MODE_ZPX,  4}, [0x74] = {"NOP", MODE_ZPX,  4},
+    [0xD4] = {"NOP", MODE_ZPX,  4}, [0xF4] = {"NOP", MODE_ZPX,  4},
+    [0x0C] = {"NOP", MODE_ABS,  4}, [0x1C] = {"NOP", MODE_ABSX, 4},
+    [0x3C] = {"NOP", MODE_ABSX, 4}, [0x5C] = {"NOP", MODE_ABSX, 4},
+    [0x7C] = {"NOP", MODE_ABSX, 4}, [0xDC] = {"NOP", MODE_ABSX, 4},
+    [0xFC] = {"NOP", MODE_ABSX, 4},
+
+    /* JAM - locks the CPU up until reset */
+    [0x02] = {"JAM", MODE_IMP,  2}, [0x12] = {"JAM", MODE_IMP,  2},
+    [0x22] = {"JAM", MODE_IMP,  2}, [0x32] = {"JAM", MODE_IMP,  2},
+    [0x42] = {"JAM", MODE_IMP,  2}, [0x52] = {"JAM", MODE_IMP,  2},
+    [0x62] = {"JAM", MODE_IMP,  2}, [0x72] = {"JAM", MODE_IMP,  2},
+    [0x92] = {"JAM", MODE_IMP,  2}, [0xB2] = {"JAM", MODE_IMP,  2},
+    [0xD2] = {"JAM", MODE_IMP,  2}, [0xF2] = {"JAM", MODE_IMP,  2},
 };
 
 int mode_length(AddrMode mode)

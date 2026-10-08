@@ -233,9 +233,8 @@ static void bit(Cpu *cpu, uint16_t addr)
 
 /* --- Arithmetic --- */
 
-static void adc(Cpu *cpu, uint16_t addr)
+static void adc_value(Cpu *cpu, uint8_t m)
 {
-    uint8_t  m     = read8(cpu, addr);
     unsigned carry = get_flag(cpu, FLAG_C) ? 1 : 0;
     unsigned sum   = cpu->a + m + carry;   /* binary sum, up to 0x1FF */
 
@@ -267,9 +266,13 @@ static void adc(Cpu *cpu, uint16_t addr)
     cpu->a = (uint8_t)(((hi << 4) | (lo & 0x0F)) & 0xFF);
 }
 
-static void sbc(Cpu *cpu, uint16_t addr)
+static void adc(Cpu *cpu, uint16_t addr)
 {
-    uint8_t m      = read8(cpu, addr);
+    adc_value(cpu, read8(cpu, addr));
+}
+
+static void sbc_value(Cpu *cpu, uint8_t m)
+{
     int     borrow = get_flag(cpu, FLAG_C) ? 0 : 1;
     int     diff   = cpu->a - m - borrow;     /* may be negative */
 
@@ -300,13 +303,22 @@ static void sbc(Cpu *cpu, uint16_t addr)
     cpu->a = (uint8_t)((((unsigned)hi << 4) | ((unsigned)lo & 0x0F)) & 0xFF);
 }
 
+static void sbc(Cpu *cpu, uint16_t addr)
+{
+    sbc_value(cpu, read8(cpu, addr));
+}
+
 /* CMP, CPX and CPY all work like a subtraction that throws away
  * the result and keeps only the flags. */
-static void compare(Cpu *cpu, uint8_t reg, uint16_t addr)
+static void compare_value(Cpu *cpu, uint8_t reg, uint8_t m)
 {
-    uint8_t m = read8(cpu, addr);
     set_flag(cpu, FLAG_C, reg >= m);
     set_zn(cpu, (uint8_t)(reg - m));
+}
+
+static void compare(Cpu *cpu, uint8_t reg, uint16_t addr)
+{
+    compare_value(cpu, reg, read8(cpu, addr));
 }
 
 /* --- Shifts and rotates (they work on a value and return it) --- */
@@ -362,10 +374,11 @@ static uint8_t do_dec(Cpu *cpu, uint8_t v)
 /* A "read-modify-write" instruction: read memory, change the value
  * with one of the do_xxx functions above, write it back. The parameter
  * op is a pointer to a function (see the chapter on function pointers). */
-static void modify(Cpu *cpu, uint16_t addr, uint8_t (*op)(Cpu *, uint8_t))
+static uint8_t modify(Cpu *cpu, uint16_t addr, uint8_t (*op)(Cpu *, uint8_t))
 {
-    uint8_t value = read8(cpu, addr);
-    write8(cpu, addr, op(cpu, value));
+    uint8_t value = op(cpu, read8(cpu, addr));
+    write8(cpu, addr, value);
+    return value;   /* the undocumented combined instructions need it */
 }
 
 /* --- Branches --- */
@@ -378,6 +391,154 @@ static void branch(Cpu *cpu, bool condition)
         cpu->cycles += page_crossed(cpu->pc, target) ? 2 : 1;
         cpu->pc = target;
     }
+}
+
+/* ------------------------------------------------------------------ */
+/* 3b. Undocumented ("illegal") instructions                           */
+/* ------------------------------------------------------------------ */
+
+/* The NMOS 6502 decodes every one of the 256 byte values. The 105 that
+ * MOS never documented are side effects of the decoding logic: most of
+ * them run two ordinary instructions at once (a shift and an ALU
+ * operation, say). Real programs, demos and copy-protection schemes
+ * use them, so we emulate what the chip actually does. */
+
+/* Read-modify-write followed by an operation on A. */
+static void slo(Cpu *cpu, uint16_t addr)     /* ASL mem, then ORA */
+{
+    cpu->a |= modify(cpu, addr, do_asl);
+    set_zn(cpu, cpu->a);
+}
+
+static void rla(Cpu *cpu, uint16_t addr)     /* ROL mem, then AND */
+{
+    cpu->a &= modify(cpu, addr, do_rol);
+    set_zn(cpu, cpu->a);
+}
+
+static void sre(Cpu *cpu, uint16_t addr)     /* LSR mem, then EOR */
+{
+    cpu->a ^= modify(cpu, addr, do_lsr);
+    set_zn(cpu, cpu->a);
+}
+
+static void rra(Cpu *cpu, uint16_t addr)     /* ROR mem, then ADC */
+{
+    adc_value(cpu, modify(cpu, addr, do_ror));   /* ROR's carry feeds ADC */
+}
+
+static void dcp(Cpu *cpu, uint16_t addr)     /* DEC mem, then CMP */
+{
+    compare_value(cpu, cpu->a, modify(cpu, addr, do_dec));
+}
+
+static void isc(Cpu *cpu, uint16_t addr)     /* INC mem, then SBC */
+{
+    sbc_value(cpu, modify(cpu, addr, do_inc));
+}
+
+/* LAX: LDA and LDX at the same time. */
+static void lax(Cpu *cpu, uint16_t addr)
+{
+    cpu->a = cpu->x = read8(cpu, addr);
+    set_zn(cpu, cpu->a);
+}
+
+/* Some opcodes put A, X and the bus value on the internal bus together.
+ * The result depends on the chip and even its temperature; $EE is the
+ * value most real chips (and most emulators) settle on. */
+#define UNSTABLE_MAGIC 0xEE
+
+static void anc(Cpu *cpu, uint8_t m)          /* AND #, C = bit 7 */
+{
+    cpu->a &= m;
+    set_zn(cpu, cpu->a);
+    set_flag(cpu, FLAG_C, (cpu->a & 0x80) != 0);
+}
+
+static void alr(Cpu *cpu, uint8_t m)          /* AND #, then LSR A */
+{
+    cpu->a = do_lsr(cpu, (uint8_t)(cpu->a & m));
+}
+
+static void arr(Cpu *cpu, uint8_t m)          /* AND #, then ROR A (odd flags) */
+{
+    uint8_t t = (uint8_t)(cpu->a & m);
+    uint8_t carry_in = get_flag(cpu, FLAG_C) ? 0x80 : 0x00;
+    uint8_t r = (uint8_t)((t >> 1) | carry_in);
+
+    if (!get_flag(cpu, FLAG_D)) {
+        cpu->a = r;
+        set_zn(cpu, r);
+        set_flag(cpu, FLAG_C, (r & 0x40) != 0);
+        set_flag(cpu, FLAG_V, ((r >> 6) ^ (r >> 5)) & 1);
+        return;
+    }
+
+    /* Decimal mode: the ADC decimal-adjust logic kicks in on the result. */
+    set_flag(cpu, FLAG_N, carry_in != 0);
+    set_flag(cpu, FLAG_Z, r == 0);
+    set_flag(cpu, FLAG_V, ((t ^ r) & 0x40) != 0);
+    unsigned lo = t & 0x0F;
+    unsigned hi = t >> 4;
+    if (lo + (lo & 1) > 5) {
+        r = (uint8_t)((r & 0xF0) | ((r + 6) & 0x0F));
+    }
+    if (hi + (hi & 1) > 5) {
+        r = (uint8_t)(r + 0x60);
+        set_flag(cpu, FLAG_C, true);
+    } else {
+        set_flag(cpu, FLAG_C, false);
+    }
+    cpu->a = r;
+}
+
+static void sbx(Cpu *cpu, uint8_t m)          /* X = (A & X) - #, like CMP */
+{
+    uint8_t ax = (uint8_t)(cpu->a & cpu->x);
+    set_flag(cpu, FLAG_C, ax >= m);
+    cpu->x = (uint8_t)(ax - m);
+    set_zn(cpu, cpu->x);
+}
+
+static void ane(Cpu *cpu, uint8_t m)          /* A = (A | magic) & X & # */
+{
+    cpu->a = (uint8_t)((cpu->a | UNSTABLE_MAGIC) & cpu->x & m);
+    set_zn(cpu, cpu->a);
+}
+
+static void lxa(Cpu *cpu, uint8_t m)          /* A = X = (A | magic) & # */
+{
+    cpu->a = cpu->x = (uint8_t)((cpu->a | UNSTABLE_MAGIC) & m);
+    set_zn(cpu, cpu->a);
+}
+
+static void las(Cpu *cpu, uint16_t addr)      /* A = X = SP = mem & SP */
+{
+    cpu->a = cpu->x = cpu->sp = (uint8_t)(read8(cpu, addr) & cpu->sp);
+    set_zn(cpu, cpu->a);
+}
+
+/* SHA, SHX, SHY and TAS store a register ANDed with (high byte of the
+ * base address + 1). If adding the index crossed a page, that same
+ * value also replaces the high byte of the address being written. */
+static void store_and_high(Cpu *cpu, uint16_t base, uint8_t index, uint8_t reg)
+{
+    uint16_t addr  = (uint16_t)(base + index);
+    uint8_t  value = (uint8_t)(reg & ((base >> 8) + 1));
+    if (page_crossed(base, addr)) {
+        addr = (uint16_t)((value << 8) | (addr & 0x00FF));
+    }
+    write8(cpu, addr, value);
+}
+
+/* The base pointer of ($zp),Y, before Y is added. */
+static uint16_t base_indy(Cpu *cpu)
+{
+    uint8_t zp = fetch8(cpu);
+    uint16_t lo = read8(cpu, zp);
+    uint16_t hi = read8(cpu, (uint8_t)(zp + 1));
+    return (uint16_t)(lo | (hi << 8));
 }
 
 /* ------------------------------------------------------------------ */
@@ -599,9 +760,14 @@ int cpu_step(Cpu *cpu)
     }
 
     case 0x20: {                                            /* JSR */
-        uint16_t target = fetch16(cpu);
-        push16(cpu, (uint16_t)(cpu->pc - 1));   /* address of last byte */
-        cpu->pc = target;
+        /* The real chip reads the low byte, pushes the return address
+         * (which points at the last byte of the JSR), and only then
+         * reads the high byte. The order matters if the stack happens
+         * to overlap the instruction itself. */
+        uint16_t lo = fetch8(cpu);
+        push16(cpu, cpu->pc);                   /* address of last byte */
+        uint16_t hi = read8(cpu, cpu->pc);
+        cpu->pc = (uint16_t)(lo | (hi << 8));
         break;
     }
 
@@ -643,10 +809,118 @@ int cpu_step(Cpu *cpu)
     case 0xEA:                                        /* NOP */
         break;
 
-    /* ---------- Anything else ---------- */
+    /* ================================================================ */
+    /* Undocumented opcodes                                             */
+    /* ================================================================ */
+
+    /* ---------- Combined read-modify-write + ALU ---------- */
+    case 0x07: slo(cpu, addr_zp(cpu));           break;
+    case 0x17: slo(cpu, addr_zpx(cpu));          break;
+    case 0x0F: slo(cpu, addr_abs(cpu));          break;
+    case 0x1F: slo(cpu, addr_absx(cpu, false));  break;
+    case 0x1B: slo(cpu, addr_absy(cpu, false));  break;
+    case 0x03: slo(cpu, addr_indx(cpu));         break;
+    case 0x13: slo(cpu, addr_indy(cpu, false));  break;
+
+    case 0x27: rla(cpu, addr_zp(cpu));           break;
+    case 0x37: rla(cpu, addr_zpx(cpu));          break;
+    case 0x2F: rla(cpu, addr_abs(cpu));          break;
+    case 0x3F: rla(cpu, addr_absx(cpu, false));  break;
+    case 0x3B: rla(cpu, addr_absy(cpu, false));  break;
+    case 0x23: rla(cpu, addr_indx(cpu));         break;
+    case 0x33: rla(cpu, addr_indy(cpu, false));  break;
+
+    case 0x47: sre(cpu, addr_zp(cpu));           break;
+    case 0x57: sre(cpu, addr_zpx(cpu));          break;
+    case 0x4F: sre(cpu, addr_abs(cpu));          break;
+    case 0x5F: sre(cpu, addr_absx(cpu, false));  break;
+    case 0x5B: sre(cpu, addr_absy(cpu, false));  break;
+    case 0x43: sre(cpu, addr_indx(cpu));         break;
+    case 0x53: sre(cpu, addr_indy(cpu, false));  break;
+
+    case 0x67: rra(cpu, addr_zp(cpu));           break;
+    case 0x77: rra(cpu, addr_zpx(cpu));          break;
+    case 0x6F: rra(cpu, addr_abs(cpu));          break;
+    case 0x7F: rra(cpu, addr_absx(cpu, false));  break;
+    case 0x7B: rra(cpu, addr_absy(cpu, false));  break;
+    case 0x63: rra(cpu, addr_indx(cpu));         break;
+    case 0x73: rra(cpu, addr_indy(cpu, false));  break;
+
+    case 0xC7: dcp(cpu, addr_zp(cpu));           break;
+    case 0xD7: dcp(cpu, addr_zpx(cpu));          break;
+    case 0xCF: dcp(cpu, addr_abs(cpu));          break;
+    case 0xDF: dcp(cpu, addr_absx(cpu, false));  break;
+    case 0xDB: dcp(cpu, addr_absy(cpu, false));  break;
+    case 0xC3: dcp(cpu, addr_indx(cpu));         break;
+    case 0xD3: dcp(cpu, addr_indy(cpu, false));  break;
+
+    case 0xE7: isc(cpu, addr_zp(cpu));           break;
+    case 0xF7: isc(cpu, addr_zpx(cpu));          break;
+    case 0xEF: isc(cpu, addr_abs(cpu));          break;
+    case 0xFF: isc(cpu, addr_absx(cpu, false));  break;
+    case 0xFB: isc(cpu, addr_absy(cpu, false));  break;
+    case 0xE3: isc(cpu, addr_indx(cpu));         break;
+    case 0xF3: isc(cpu, addr_indy(cpu, false));  break;
+
+    /* ---------- LAX / SAX ---------- */
+    case 0xA7: lax(cpu, addr_zp(cpu));           break;
+    case 0xB7: lax(cpu, addr_zpy(cpu));          break;
+    case 0xAF: lax(cpu, addr_abs(cpu));          break;
+    case 0xBF: lax(cpu, addr_absy(cpu, true));   break;
+    case 0xA3: lax(cpu, addr_indx(cpu));         break;
+    case 0xB3: lax(cpu, addr_indy(cpu, true));   break;
+
+    case 0x87: write8(cpu, addr_zp(cpu),   (uint8_t)(cpu->a & cpu->x)); break;
+    case 0x97: write8(cpu, addr_zpy(cpu),  (uint8_t)(cpu->a & cpu->x)); break;
+    case 0x8F: write8(cpu, addr_abs(cpu),  (uint8_t)(cpu->a & cpu->x)); break;
+    case 0x83: write8(cpu, addr_indx(cpu), (uint8_t)(cpu->a & cpu->x)); break;
+
+    /* ---------- Immediate oddities ---------- */
+    case 0x0B:
+    case 0x2B: anc(cpu, fetch8(cpu));            break;
+    case 0x4B: alr(cpu, fetch8(cpu));            break;
+    case 0x6B: arr(cpu, fetch8(cpu));            break;
+    case 0xCB: sbx(cpu, fetch8(cpu));            break;
+    case 0xEB: sbc(cpu, addr_imm(cpu));          break;   /* same as $E9 */
+    case 0x8B: ane(cpu, fetch8(cpu));            break;
+    case 0xAB: lxa(cpu, fetch8(cpu));            break;
+
+    /* ---------- Stores ANDed with the address high byte ---------- */
+    case 0x93: store_and_high(cpu, base_indy(cpu), cpu->y, (uint8_t)(cpu->a & cpu->x)); break; /* SHA */
+    case 0x9F: store_and_high(cpu, fetch16(cpu),   cpu->y, (uint8_t)(cpu->a & cpu->x)); break; /* SHA */
+    case 0x9E: store_and_high(cpu, fetch16(cpu),   cpu->y, cpu->x);                     break; /* SHX */
+    case 0x9C: store_and_high(cpu, fetch16(cpu),   cpu->x, cpu->y);                     break; /* SHY */
+    case 0x9B:                                                                                  /* TAS */
+        cpu->sp = (uint8_t)(cpu->a & cpu->x);
+        store_and_high(cpu, fetch16(cpu), cpu->y, cpu->sp);
+        break;
+    case 0xBB: las(cpu, addr_absy(cpu, true));   break;
+
+    /* ---------- NOPs that still read their operand ---------- */
+    case 0x1A: case 0x3A: case 0x5A: case 0x7A: case 0xDA: case 0xFA:
+        break;                                              /* 1 byte  */
+    case 0x80: case 0x82: case 0x89: case 0xC2: case 0xE2:
+        cpu->pc++;                                          /* #imm    */
+        break;
+    case 0x04: case 0x44: case 0x64:
+        (void)read8(cpu, addr_zp(cpu));
+        break;
+    case 0x14: case 0x34: case 0x54: case 0x74: case 0xD4: case 0xF4:
+        (void)read8(cpu, addr_zpx(cpu));
+        break;
+    case 0x0C:
+        (void)read8(cpu, addr_abs(cpu));
+        break;
+    case 0x1C: case 0x3C: case 0x5C: case 0x7C: case 0xDC: case 0xFC:
+        (void)read8(cpu, addr_absx(cpu, true));
+        break;
+
+    /* ---------- JAM: the chip locks up ---------- */
+    case 0x02: case 0x12: case 0x22: case 0x32: case 0x42: case 0x52:
+    case 0x62: case 0x72: case 0x92: case 0xB2: case 0xD2: case 0xF2:
     default:
-        /* An illegal opcode: stop, and leave PC pointing at it
-         * so that whoever is debugging can see where it happened. */
+        /* The real CPU stops fetching instructions until it is reset.
+         * Leave PC pointing at the JAM so the debugger shows where. */
         cpu->pc = op_pc;
         cpu->halted = true;
         break;

@@ -161,13 +161,86 @@ static void test_jmp_indirect_bug(void)
     CHECK(cpu.pc == 0x5634);
 }
 
-static void test_illegal_opcode_halts(void)
+/* --- Undocumented opcodes --- */
+
+static void test_lax_sax(void)
 {
-    const uint8_t prog[] = { 0x02 };              /* not an instruction */
+    const uint8_t prog[] = {
+        0xA7, 0x10,         /* LAX $10   : A = X = mem[$10]     */
+        0xA9, 0x0F,         /* LDA #$0F                         */
+        0x87, 0x11,         /* SAX $11   : mem[$11] = A AND X   */
+    };
+    setup(prog, sizeof prog);
+    bus.mem[0x10] = 0x9C;
+    CHECK(cpu_step(&cpu) == 3);
+    CHECK(cpu.a == 0x9C && cpu.x == 0x9C);
+    CHECK(cpu.p & FLAG_N);
+    run(2);
+    CHECK(bus.mem[0x11] == 0x0C);
+}
+
+static void test_dcp_isc(void)
+{
+    const uint8_t prog[] = {
+        0xA9, 0x41,         /* LDA #$41                          */
+        0xC7, 0x10,         /* DCP $10 : mem-- then CMP          */
+        0x38,               /* SEC                               */
+        0xE7, 0x11,         /* ISC $11 : mem++ then SBC          */
+    };
+    setup(prog, sizeof prog);
+    bus.mem[0x10] = 0x42;
+    bus.mem[0x11] = 0x0F;
+    run(2);
+    CHECK(bus.mem[0x10] == 0x41);
+    CHECK((cpu.p & FLAG_Z) && (cpu.p & FLAG_C));   /* A == mem */
+    run(2);
+    CHECK(bus.mem[0x11] == 0x10);
+    CHECK(cpu.a == 0x31);
+}
+
+static void test_slo_and_alr(void)
+{
+    const uint8_t prog[] = {
+        0xA9, 0x01,         /* LDA #$01                           */
+        0x07, 0x10,         /* SLO $10 : mem <<= 1, then A |= mem */
+        0x4B, 0x03,         /* ALR #$03: A &= 3, then LSR A       */
+    };
+    setup(prog, sizeof prog);
+    bus.mem[0x10] = 0xC0;
+    run(2);
+    CHECK(bus.mem[0x10] == 0x80);
+    CHECK(cpu.a == 0x81);
+    CHECK(cpu.p & FLAG_C);           /* bit 7 shifted out of $C0 */
+    run(1);
+    CHECK(cpu.a == 0x00);
+    CHECK((cpu.p & FLAG_C) && (cpu.p & FLAG_Z));
+}
+
+static void test_nop_variants(void)
+{
+    const uint8_t prog[] = {
+        0x80, 0xFF,         /* NOP #$FF  : 2 bytes, 2 cycles      */
+        0xA2, 0x01,         /* LDX #$01                           */
+        0x1C, 0xFF, 0x02,   /* NOP $02FF,X : crosses a page       */
+    };
+    setup(prog, sizeof prog);
+    CHECK(cpu_step(&cpu) == 2);
+    CHECK(cpu.pc == 0x0202);
+    run(1);
+    CHECK(cpu_step(&cpu) == 5);
+    CHECK(cpu.pc == 0x0207);
+}
+
+static void test_jam_locks_up(void)
+{
+    const uint8_t prog[] = { 0x02 };              /* JAM */
     setup(prog, sizeof prog);
     run(1);
     CHECK(cpu.halted);
     CHECK(cpu.pc == 0x0200);
+    CHECK(cpu_step(&cpu) == 0);                   /* stays jammed */
+    cpu_reset(&cpu);
+    CHECK(!cpu.halted);                           /* reset revives it */
 }
 
 int main(void)
@@ -180,7 +253,11 @@ int main(void)
     test_jsr_rts();
     test_branch_cycles();
     test_jmp_indirect_bug();
-    test_illegal_opcode_halts();
+    test_lax_sax();
+    test_dcp_isc();
+    test_slo_and_alr();
+    test_nop_variants();
+    test_jam_locks_up();
 
     printf("%d checks, %d failed\n", tests_run, tests_failed);
     return tests_failed == 0 ? 0 : 1;

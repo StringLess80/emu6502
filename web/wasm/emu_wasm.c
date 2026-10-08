@@ -118,7 +118,7 @@ static void after_instruction(int used)
 }
 
 /* Run for (at least) the given number of cycles. Stops early on a
- * breakpoint or an illegal opcode. A breakpoint on the very first
+ * breakpoint or a JAM opcode. A breakpoint on the very first
  * instruction is ignored when skip_first is set, so that "continue"
  * can move past the breakpoint it stopped on. */
 EXPORT(emu_run) int emu_run(uint32_t cycles, int skip_first)

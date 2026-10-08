@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
         last_pc = cpu.pc;
         cpu_step(&cpu);
         if (cpu.halted) {
-            printf("FAIL: illegal opcode $%02X at $%04X\n",
+            printf("FAIL: JAM opcode $%02X at $%04X\n",
                    bus->mem[cpu.pc], cpu.pc);
             break;
         }

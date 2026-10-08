@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "cpu.h"
 #include "disasm.h"
@@ -369,6 +370,7 @@ int main(int argc, char *argv[])
     KeyQueue keys = {0};
     uint8_t last_pa = via_port_a(&sbc.via), last_pb = via_port_b(&sbc.via);
     bool running = true;
+    bool jam_reported = false;
 
     while (running) {
         /* 1. Run one slice of instructions. */
@@ -386,13 +388,18 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (cpu.halted) {
+        /* A JAM opcode locks the real chip up until reset. Say so once,
+         * then keep reading keys so that Ctrl+R can bring it back. */
+        if (cpu.halted && !jam_reported) {
             char msg[80];
             snprintf(msg, sizeof msg,
-                     "\r[CPU halted: illegal opcode $%02X at $%04X]\r",
+                     "\r[CPU jammed: opcode $%02X at $%04X. Ctrl+R resets]\r",
                      bus_peek(&sbc, cpu.pc), cpu.pc);
             screen_message(msg);
-            running = false;
+            jam_reported = true;
+            if (!isatty(STDIN_FILENO)) {
+                running = false;     /* nobody there to press reset */
+            }
         }
 
         /* 2. Collect keys from the host keyboard. */
@@ -403,6 +410,7 @@ int main(int argc, char *argv[])
             } else if (key == KEY_RESET) {
                 sbc_reset_chips(&sbc);
                 cpu_reset(&cpu);
+                jam_reported = false;
                 keys.count = keys.head = keys.tail = 0;
                 screen_message("\r[RESET]\r");
             } else {
@@ -435,7 +443,10 @@ int main(int argc, char *argv[])
         }
 
         /* 5. Keep in step with real time. */
-        if (opt.clock_hz > 0) {
+        if (cpu.halted) {
+            sleep_ns(10000000);                  /* jammed: just wait */
+            deadline = now_ns();
+        } else if (opt.clock_hz > 0) {
             deadline += slice_ns;
             uint64_t now = now_ns();
             if (now < deadline) {

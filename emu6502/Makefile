@@ -2,6 +2,7 @@
 #
 #   make          build the emulator (./emu6502)
 #   make test     build and run the unit tests
+#   make singlestep SST=dir   run the SingleStepTests vectors in dir
 #   make clean    delete everything that make built
 
 CC      = cc
@@ -42,6 +43,9 @@ tests/test_cpu: tests/test_cpu.c $(TEST_CPU) src/cpu.h src/opcodes.h tests/flatb
 tests/functest: tests/functest.c $(TEST_CPU) src/cpu.h tests/flatbus.h
 	$(CC) $(CFLAGS) -o $@ tests/functest.c $(TEST_CPU)
 
+tests/singlestep: tests/singlestep.c $(TEST_CPU) src/cpu.h tests/flatbus.h
+	$(CC) $(CFLAGS) -o $@ tests/singlestep.c $(TEST_CPU)
+
 test: tests/test_cpu
 	./tests/test_cpu
 
@@ -49,8 +53,13 @@ test: tests/test_cpu
 functest: tests/functest
 	./tests/functest tests/6502_functional_test.bin
 
+# Needs the 6502/v1 JSON files of SingleStepTests/65x02 in $(SST).
+SST = tests/sst
+singlestep: tests/singlestep
+	python3 tests/singlestep.py $(SST)
+
 clean:
-	rm -f emu6502 $(OBJS) tests/test_cpu tests/functest
+	rm -f emu6502 $(OBJS) tests/test_cpu tests/functest tests/singlestep
 
 # These names are commands, not files.
-.PHONY: test functest clean
+.PHONY: test functest singlestep clean

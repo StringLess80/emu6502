@@ -15,7 +15,7 @@ emu6502 emulates a small 6502 computer: the CPU, 16 KiB of RAM, 32 KiB of ROM, a
 [![Web](https://img.shields.io/badge/run%20in%20browser-WebAssembly-654FF0?style=for-the-badge&logo=webassembly&logoColor=white)](https://stringless80.github.io/emu6502/)
 
 ![Dependencies](https://img.shields.io/badge/dependencies-none-lightgrey)
-![Size](https://img.shields.io/badge/source-~2200%20lines-lightgrey)
+![Size](https://img.shields.io/badge/source-~2600%20lines-lightgrey)
 ![Last commit](https://img.shields.io/github/last-commit/StringLess80/emu6502)
 ![Repo size](https://img.shields.io/github/repo-size/StringLess80/emu6502)
 ![Stars](https://img.shields.io/github/stars/StringLess80/emu6502?style=social)
@@ -34,7 +34,7 @@ emu6502 emulates a small 6502 computer: the CPU, 16 KiB of RAM, 32 KiB of ROM, a
 
 |  |  |
 |---|---|
-| 🧠 **CPU** | NMOS 6502 core: all 151 official opcodes, decimal mode, the NMOS quirks, per-instruction cycle counts |
+| 🧠 **CPU** | NMOS 6502 core: all 256 opcodes (151 official + 105 undocumented), decimal mode, the NMOS quirks, per-instruction cycle counts |
 | 🗺️ **Memory** | 16 KiB RAM · 32 KiB ROM · ACIA at `$5000` · VIA at `$6000` |
 | 📡 **Serial** | 6551 ACIA wired to your terminal in raw mode |
 | 🔌 **I/O** | 6522 VIA: both ports and both timers, with a live display of the port pins |
@@ -145,6 +145,7 @@ emu6502/
 │   └── tests/
 │       ├── test_cpu.c         Unit tests for single instructions
 │       ├── functest.c         Runner for Klaus Dormann's 6502 functional test
+│       ├── singlestep.c / .py Runner for the SingleStepTests vectors (all 256 opcodes)
 │       └── flatbus.c / .h     64 KiB flat-RAM bus for the tests
 ├── .github/workflows/
 │   └── pages.yml              Builds and publishes the web emulator
@@ -183,11 +184,12 @@ Each I/O device answers anywhere in its 4 KiB slot: the ACIA's 4 registers and t
 
 ### CPU
 
-- All 151 documented NMOS 6502 opcodes, in all 13 addressing modes.
+- All 256 NMOS 6502 opcodes: the 151 documented ones in all 13 addressing modes, and the 105 undocumented ones.
+- Undocumented opcodes do what the real chip does: `SLO` `RLA` `SRE` `RRA` `DCP` `ISC` `LAX` `SAX` `ANC` `ALR` `ARR` `SBX` `SBC #` `ANE` `LXA` `LAS` `SHA` `SHX` `SHY` `TAS`, and NOPs of 1 to 3 bytes that still read their operand. `ANE` and `LXA` use the common magic constant `$EE`.
+- The 12 `JAM` opcodes lock the CPU up like the real chip: the emulator reports where, and Reset brings it back.
 - Decimal mode for ADC and SBC, with the NMOS flag behaviour (N, V and Z as the original chip computes them).
 - The `JMP ($xxFF)` page-wrap bug, zero-page wrap-around, and the B flag only in pushed copies of P.
 - Cycle counts include the +1 for page crossings on indexed reads and the +1/+2 for taken branches.
-- Undocumented opcodes stop the CPU and report the address, instead of imitating the chip.
 
 ### 6551 ACIA
 
@@ -384,6 +386,7 @@ web/wasm/build.sh                              # writes web/emu-wasm.js
 ```bash
 make test        # unit tests: single instructions, flags, stack, cycles
 make functest    # the full 6502 functional test
+make singlestep SST=path/to/6502/v1   # 10,000 recorded cases per opcode
 ```
 
 `make functest` needs `6502_functional_test.bin` from [Klaus2m5/6502_65C02_functional_tests](https://github.com/Klaus2m5/6502_65C02_functional_tests) (`bin_files/`), copied into `tests/`. The test exercises every documented instruction and flag, decimal mode included, and traps at a known address on success:
@@ -392,7 +395,9 @@ make functest    # the full 6502 functional test
 PASS: stopped at $3469 after 96241367 cycles
 ```
 
-The core also passes the functional test under `-fsanitize=address,undefined`.
+`make singlestep` runs the [SingleStepTests/65x02](https://github.com/SingleStepTests/65x02) vectors (folder `6502/v1`, files `00.json` to `ff.json`): 10,000 cases per opcode recorded from a real NMOS 6502, each checking registers, flags, memory and cycle count after one instruction. All 244 non-`JAM` opcodes pass every case, undocumented ones included. The `JAM` opcodes are skipped, since the vectors record bus activity of the locked-up chip.
+
+The core also passes both test suites under `-fsanitize=address,undefined`.
 
 ## 🐛 Known limitations
 
@@ -402,7 +407,7 @@ The core also passes the functional test under `-fsanitize=address,undefined`.
 | 2 | **Instruction-level timing.** No dummy reads or double writes inside instructions; the VIA timers advance once per instruction | I/O registers that react to those extra accesses behave differently. The emulated ACIA and VIA don't |
 | 3 | **Instant serial transmit.** No baud-rate timing; TDRE is always set | Software that relies on transmit delays runs faster than on a real 6551 |
 | 4 | **Partial 6522.** Shift register, handshake lines (CA/CB) and timer 2 pulse counting are stored but have no effect | Programs using them won't see results |
-| 5 | **Undocumented opcodes halt** the CPU | Code relying on illegal opcodes stops |
+| 5 | **Unstable undocumented opcodes are fixed.** `ANE` and `LXA` vary between real chips; the emulator always uses `$EE` | Code depending on one particular chip's value may differ |
 | 6 | **POSIX only.** The terminal module uses `termios` and `poll` | Native Windows needs WSL, or a `terminal.c` port |
 | 7 | **No LOAD/SAVE** in the BASIC ROM | BASIC programs are lost on reset |
 
