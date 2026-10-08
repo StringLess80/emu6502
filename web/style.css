@@ -137,6 +137,7 @@ button, input, select { font: inherit; color: inherit; }
 /* ---------- The screen ---------- */
 
 .bezel {
+  position: relative;
   background: var(--bezel);
   border-radius: 14px;
   padding: 18px;
@@ -160,7 +161,28 @@ button, input, select { font: inherit; color: inherit; }
   cursor: text;
   scrollbar-color: var(--phosphor-dim) transparent;
 }
-.screen:focus { outline: none; box-shadow: 0 0 0 2px var(--phosphor-dim); }
+.bezel:focus-within .screen { box-shadow: 0 0 0 2px var(--phosphor-dim); }
+
+/* The keyboard really goes to this invisible text box: phones only open
+ * their on-screen keyboard for a focused text field. 16px stops iOS from
+ * zooming in when it gets focus. */
+.term-input {
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  resize: none;
+  overflow: hidden;
+  font-size: 16px;
+  color: transparent;
+  background: transparent;
+  caret-color: transparent;
+  pointer-events: none;
+}
 
 .term-history, .term-grid {
   margin: 0;
@@ -171,7 +193,7 @@ button, input, select { font: inherit; color: inherit; }
 .term-history { color: #d9952f; }
 
 .cursor { background: var(--phosphor); color: var(--screen); text-shadow: none; }
-.screen:not(:focus) .cursor { background: transparent; color: inherit; outline: 1px solid var(--phosphor-dim); }
+.bezel:not(:focus-within) .cursor { background: transparent; color: inherit; outline: 1px solid var(--phosphor-dim); }
 
 .term-empty {
   position: absolute;
@@ -202,6 +224,13 @@ button, input, select { font: inherit; color: inherit; }
 }
 .check { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 .hint { color: var(--muted); font-size: 13px; margin: 0; }
+
+/* Keys a phone keyboard does not have. Only on touch screens. */
+.softkeys { display: none; gap: 6px; flex-wrap: wrap; }
+@media (pointer: coarse) {
+  .softkeys { display: flex; }
+  #term-hint { display: none; }
+}
 
 body.is-dragging .bezel { box-shadow: 0 0 0 3px var(--phosphor); }
 

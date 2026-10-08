@@ -48,7 +48,10 @@
 
   <section class="screen-area" aria-label="Terminal">
     <div class="bezel">
-      <div id="term" class="screen" tabindex="0" aria-label="Terminal: click and type">
+      <textarea id="term-input" class="term-input" aria-label="Type to the 6502"
+                autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"
+                enterkeyhint="send" rows="1"></textarea>
+      <div id="term" class="screen" aria-label="Terminal: click or tap and type">
         <pre id="term-history" class="term-history"></pre>
         <pre id="term-grid" class="term-grid"></pre>
         <div id="term-empty" class="term-empty" hidden>
@@ -59,6 +62,12 @@
     </div>
     <div class="screen-foot">
       <label class="check"><input id="upcase" type="checkbox" checked> Capitals only</label>
+      <div class="softkeys" role="group" aria-label="Keys a phone keyboard lacks">
+        <button class="key" data-code="3">Ctrl+C</button>
+        <button class="key" data-code="27">Esc</button>
+        <button class="key" data-code="9">Tab</button>
+        <button class="key" data-code="13">Return</button>
+      </div>
       <span id="term-hint" class="hint">Click the screen to type. Ctrl+C goes to the 6502.</span>
       <span id="keyq" class="hint"></span>
     </div>

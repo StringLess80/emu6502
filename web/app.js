@@ -253,7 +253,25 @@
     return c < 128 ? c : null;
   }
 
-  termEl.addEventListener("keydown", (e) => {
+  // Keys are typed into an invisible text box (#term-input) rather than the
+  // screen itself: a phone only opens its keyboard for a focused text field.
+  const inputEl = $("#term-input");
+
+  function focusTerm() {
+    inputEl.focus({ preventScroll: true });
+  }
+
+  termEl.addEventListener("click", () => {
+    // Don't steal the focus while the user is selecting text to copy.
+    const sel = window.getSelection();
+    if (sel && sel.toString() !== "") return;
+    focusTerm();
+  });
+
+  inputEl.addEventListener("keydown", (e) => {
+    // Phone keyboards often report every key as "Unidentified" (229) and
+    // ignore preventDefault; the input handler below takes care of them.
+    if (e.isComposing || e.keyCode === 229) return;
     if (e.metaKey) return;                        // let Cmd+C / Cmd+V work
     if (e.ctrlKey && (e.key === "v" || e.key === "V")) return;   // paste
     let code = null;
@@ -271,7 +289,53 @@
     }
   });
 
-  termEl.addEventListener("paste", (e) => {
+  // Text that arrives without a usable keydown (phones, voice input,
+  // autocomplete) is found by comparing the box with what it held before:
+  // removed characters become Backspaces, new ones are typed. The box
+  // starts with a few spaces so that Backspace has something to delete.
+  const PAD = "    ";
+  let previous = PAD;
+  let composing = false;
+
+  function resetInput() {
+    inputEl.value = PAD;
+    previous = PAD;
+    inputEl.setSelectionRange(PAD.length, PAD.length);
+  }
+
+  inputEl.addEventListener("input", () => {
+    const now = inputEl.value;
+    let same = 0;
+    while (same < previous.length && same < now.length && previous[same] === now[same]) same++;
+    for (let i = previous.length; i > same; i--) E.emu_key(0x08);
+    for (const ch of now.slice(same)) {
+      const code = ch === "\n" ? 0x0d : keyCode(ch);
+      if (code !== null) E.emu_key(code);
+    }
+    previous = now;
+    if (!composing && (now.length < PAD.length || now.length > 40 || now.includes("\n"))) resetInput();
+  });
+  inputEl.addEventListener("compositionstart", () => { composing = true; });
+  inputEl.addEventListener("compositionend", () => {
+    composing = false;
+    // Some keyboards end the word with a space or Enter after this event.
+    setTimeout(() => { if (!composing && inputEl.value.length > 40) resetInput(); }, 0);
+  });
+  inputEl.addEventListener("focus", () => {
+    if (!composing) resetInput();
+  });
+
+  // On-screen buttons for keys a phone keyboard lacks. pointerdown is
+  // cancelled so the text box keeps the focus and the keyboard stays open.
+  for (const b of document.querySelectorAll(".softkeys [data-code]")) {
+    b.addEventListener("pointerdown", (e) => e.preventDefault());
+    b.addEventListener("click", () => {
+      E.emu_key(Number(b.dataset.code));
+      focusTerm();
+    });
+  }
+
+  inputEl.addEventListener("paste", (e) => {
     const text = (e.clipboardData || window.clipboardData).getData("text");
     for (const ch of text.replace(/\r\n?/g, "\n")) {
       const code = ch === "\n" ? 0x0d : keyCode(ch);
@@ -730,7 +794,7 @@
       } catch (_) { /* storage unavailable: just don't remember it */ }
     }
     setRunning(true);
-    termEl.focus();
+    focusTerm();
     return true;
   }
 
@@ -824,7 +888,7 @@
     E.emu_reset();
     setStatus("Reset");
     setRunning(true);
-    termEl.focus();
+    focusTerm();
   });
   $("#btn-power").addEventListener("click", () => {
     let saved = null;
