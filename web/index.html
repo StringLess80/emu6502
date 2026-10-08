@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>emu6502</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=dev">
 </head>
 <body>
 
@@ -48,7 +48,11 @@
 
   <section class="screen-area" aria-label="Terminal">
     <div class="bezel">
+      <!-- Invisible: tapping or clicking the screen focuses it, which is what
+           makes a phone open its keyboard. The inline style keeps it hidden
+           even before style.css has loaded. -->
       <textarea id="term-input" class="term-input" aria-label="Type to the 6502"
+                style="position:absolute;width:1px;height:1px;opacity:0;border:0;padding:0;resize:none;pointer-events:none"
                 autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"
                 enterkeyhint="send" rows="1"></textarea>
       <div id="term" class="screen" aria-label="Terminal: click or tap and type">
@@ -135,7 +139,7 @@
   </aside>
 </main>
 
-<script src="emu-wasm.js"></script>
-<script src="app.js"></script>
+<script src="emu-wasm.js?v=dev"></script>
+<script src="app.js?v=dev"></script>
 </body>
 </html>

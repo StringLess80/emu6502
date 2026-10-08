@@ -44,6 +44,9 @@ jobs:
           mkdir site
           cp -r web/index.html web/app.js web/style.css web/emu-wasm.js web/fonts site/
           cp rom/rom.bin site/rom.bin
+          # A new ?v= on every deploy, so browsers never mix a new page
+          # with an old cached app.js or style.css.
+          sed -i "s/?v=dev/?v=${GITHUB_SHA::8}/g" site/index.html
 
       - uses: actions/configure-pages@v5
 
