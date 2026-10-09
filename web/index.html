@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>emu6502</title>
 <link rel="stylesheet" href="style.css?v=dev">
+<link rel="stylesheet" href="theme-classic.css?v=dev">
+<script>
+  // Apply the saved theme before the page is drawn, so it doesn't flash.
+  try { const t = localStorage.getItem("emu6502.theme"); if (t) document.documentElement.dataset.theme = t; } catch (_) {}
+</script>
 </head>
 <body>
 
@@ -78,6 +83,13 @@
         <button class="key" data-code="13">Return</button>
       </div>
       <span id="term-hint" class="hint">Click the screen to type. Ctrl+C goes to the 6502.</span>
+      <label class="field theme-field">
+        <span>Theme</span>
+        <select id="theme">
+          <option value="phosphor">Phosphor</option>
+          <option value="classic">Classic desktop</option>
+        </select>
+      </label>
       <span id="keyq" class="hint"></span>
     </div>
   </section>
@@ -143,6 +155,12 @@
 
   </aside>
 </main>
+
+<!-- Only shown by the classic desktop theme. -->
+<footer class="taskbar" aria-hidden="true">
+  <span class="taskbar-app">emu6502</span>
+  <span id="taskbar-clock" class="taskbar-clock"></span>
+</footer>
 
 <script src="emu-wasm.js?v=dev"></script>
 <script src="app.js?v=dev"></script>

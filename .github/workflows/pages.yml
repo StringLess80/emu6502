@@ -42,7 +42,7 @@ jobs:
       - name: Assemble the site
         run: |
           mkdir site
-          cp -r web/index.html web/app.js web/style.css web/emu-wasm.js web/fonts site/
+          cp -r web/index.html web/app.js web/style.css web/theme-classic.css web/emu-wasm.js web/fonts site/
           cp rom/rom.bin site/rom.bin
           # A new ?v= on every deploy, so browsers never mix a new page
           # with an old cached app.js or style.css.

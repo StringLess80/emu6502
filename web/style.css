@@ -244,6 +244,8 @@ button, input, select { font: inherit; color: inherit; }
 }
 .check { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 .hint { color: var(--muted); font-size: 13px; margin: 0; }
+.theme-field { margin-left: auto; }
+.taskbar { display: none; }   /* see theme-classic.css */
 
 /* Keys a phone keyboard does not have. Only on touch screens. */
 .softkeys { display: none; gap: 6px; flex-wrap: wrap; }

@@ -1,0 +1,289 @@
+/* theme-classic.css - a 1990s desktop look for the web interface.
+ *
+ * Everything here applies only when <html data-theme="classic">: grey
+ * bevelled windows with blue title bars on a teal desktop, a black
+ * console window for the terminal, and a taskbar at the bottom.
+ *
+ * The 3D edges are all box-shadows: a light line on the top/left and a
+ * dark one on the bottom/right make a surface stand out ("raised");
+ * swapping them makes it look pressed in ("sunken").
+ */
+
+html[data-theme="classic"] {
+  --chassis: #008080;
+  --panel: #c0c0c0;
+  --groove: #808080;
+  --legend: #000;
+  --muted: #404040;
+  --data: #000;
+  --key: #c0c0c0;
+  --key-text: #000;
+  --screen: #000;
+  --bezel: #c0c0c0;
+  --phosphor: #000080;
+  --phosphor-dim: #808080;
+  --lit: #fff;
+  --led-on: #ff2a1a;
+  --led-off: #3a0d0d;
+  --focus: #000;
+
+  --sans: Tahoma, Verdana, "Segoe UI", Geneva, sans-serif;
+  --mono: "Courier New", Courier, ui-monospace, monospace;
+  --crt: "Lucida Console", "Courier New", ui-monospace, monospace;
+
+  --raised: inset -1px -1px #0a0a0a, inset 1px 1px #fff, inset -2px -2px #808080, inset 2px 2px #dfdfdf;
+  --pressed: inset -1px -1px #fff, inset 1px 1px #0a0a0a, inset -2px -2px #dfdfdf, inset 2px 2px #808080;
+  --sunken: inset -1px -1px #fff, inset 1px 1px #808080, inset -2px -2px #dfdfdf, inset 2px 2px #0a0a0a;
+  --titlebar: linear-gradient(90deg, #000080, #1084d0);
+}
+
+html[data-theme="classic"],
+html[data-theme="classic"] body {
+  font-size: 13px;
+}
+html[data-theme="classic"] body { padding-bottom: 40px; }   /* room for the taskbar */
+html[data-theme="classic"] :focus-visible { outline: 1px dotted #000; outline-offset: -4px; }
+
+/* ---------- Top bar: an application window's toolbar ---------- */
+
+html[data-theme="classic"] .bar {
+  background: var(--panel);
+  border-bottom: 0;
+  box-shadow: var(--raised);
+  padding: 6px 10px;
+}
+html[data-theme="classic"] .brand {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+  background: var(--titlebar);
+  padding: 4px 10px;
+  margin-right: 4px;
+  letter-spacing: 0;
+}
+
+/* ---------- Buttons ---------- */
+
+html[data-theme="classic"] .key,
+html[data-theme="classic"] .chip {
+  background: var(--panel);
+  color: #000;
+  border: 0;
+  border-radius: 0;
+  box-shadow: var(--raised);
+  padding: 5px 12px;
+  font-weight: 400;
+}
+html[data-theme="classic"] .chip { padding: 3px 8px; font-size: 12px; }
+html[data-theme="classic"] .key:active,
+html[data-theme="classic"] .chip:active {
+  transform: none;
+  box-shadow: var(--pressed);
+  padding: 6px 11px 4px 13px;   /* the label moves down-right when pressed */
+}
+html[data-theme="classic"] .chip:active { padding: 4px 7px 2px 9px; }
+html[data-theme="classic"] .key:disabled {
+  opacity: 1;
+  color: #808080;
+  text-shadow: 1px 1px #fff;   /* the classic embossed grey label */
+}
+html[data-theme="classic"] .key-primary { font-weight: 700; min-width: 72px; }
+html[data-theme="classic"] .key-primary.is-running { background: var(--panel); box-shadow: var(--pressed); }
+
+/* ---------- Text fields and drop-downs: white and sunken ---------- */
+
+html[data-theme="classic"] .field { color: #000; }
+html[data-theme="classic"] .field input,
+html[data-theme="classic"] .field select {
+  background: #fff;
+  color: #000;
+  border: 0;
+  border-radius: 0;
+  box-shadow: var(--sunken);
+  padding: 4px 6px;
+}
+
+/* ---------- The LED strip and the status text ---------- */
+
+html[data-theme="classic"] .bar-ports {
+  background: #000;
+  border-radius: 0;
+  box-shadow: var(--sunken);
+  padding: 6px 10px;
+}
+html[data-theme="classic"] .bar-port-name { color: #c0c0c0; }
+html[data-theme="classic"] .bar-port-val { color: #fff; }
+html[data-theme="classic"] .status {
+  background: var(--panel);
+  box-shadow: var(--sunken);
+  padding: 3px 8px;
+  color: #000;
+}
+html[data-theme="classic"] .status.is-stopped { color: #000080; }
+html[data-theme="classic"] .status.is-error { color: #a00000; }
+
+/* ---------- Windows: panels and the terminal ---------- */
+
+html[data-theme="classic"] .panel,
+html[data-theme="classic"] .bezel {
+  background: var(--panel);
+  border-radius: 0;
+  box-shadow: var(--raised);
+  padding: 3px 8px 10px;
+}
+
+/* The panel heading becomes the window's blue title bar, on a row of
+ * its own; the panel's other controls wrap onto the row below it. */
+html[data-theme="classic"] .panel-head { align-items: center; gap: 6px 8px; }
+html[data-theme="classic"] .panel-head h2,
+html[data-theme="classic"] .bezel::before {
+  flex: 0 0 calc(100% + 10px);
+  margin: 0 -5px 4px;
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 3px 0 6px;
+  background: var(--titlebar);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+/* Minimise, maximise and close boxes, drawn as a small SVG picture.
+ * Decoration only: they don't do anything. */
+html[data-theme="classic"] .panel-head h2::after,
+html[data-theme="classic"] .bezel::after {
+  content: "";
+  margin-left: auto;
+  width: 52px;
+  height: 14px;
+  flex: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2752%27 height=%2714%27%3E%3Crect x=%270%27 width=%2716%27 height=%2714%27 fill=%27%23000%27/%3E%3Crect x=%270%27 width=%2715%27 height=%2713%27 fill=%27%23fff%27/%3E%3Crect x=%271%27 y=%271%27 width=%2714%27 height=%2712%27 fill=%27%23808080%27/%3E%3Crect x=%271%27 y=%271%27 width=%2713%27 height=%2711%27 fill=%27%23c0c0c0%27/%3E%3Crect x=%2716%27 width=%2716%27 height=%2714%27 fill=%27%23000%27/%3E%3Crect x=%2716%27 width=%2715%27 height=%2713%27 fill=%27%23fff%27/%3E%3Crect x=%2717%27 y=%271%27 width=%2714%27 height=%2712%27 fill=%27%23808080%27/%3E%3Crect x=%2717%27 y=%271%27 width=%2713%27 height=%2711%27 fill=%27%23c0c0c0%27/%3E%3Crect x=%2736%27 width=%2716%27 height=%2714%27 fill=%27%23000%27/%3E%3Crect x=%2736%27 width=%2715%27 height=%2713%27 fill=%27%23fff%27/%3E%3Crect x=%2737%27 y=%271%27 width=%2714%27 height=%2712%27 fill=%27%23808080%27/%3E%3Crect x=%2737%27 y=%271%27 width=%2713%27 height=%2711%27 fill=%27%23c0c0c0%27/%3E%3Crect x=%274%27 y=%279%27 width=%276%27 height=%272%27/%3E%3Crect x=%2720%27 y=%272%27 width=%279%27 height=%279%27 fill=%27none%27 stroke=%27%23000%27/%3E%3Crect x=%2720%27 y=%272%27 width=%279%27 height=%272%27/%3E%3Cpath d=%27M40 3l7 7M47 3l-7 7%27 stroke=%27%23000%27 stroke-width=%272%27/%3E%3C/svg%3E") no-repeat;
+}
+html[data-theme="classic"] .bezel::before {
+  content: "Terminal - 6551 ACIA";
+  margin: 0 -5px 6px;
+}
+/* The bezel's title bar is a ::before, so its boxes go in a separate
+ * ::after placed over the bar's right end. */
+html[data-theme="classic"] .bezel::after {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  margin: 0;
+}
+
+html[data-theme="classic"] .meta { color: #000; }
+
+/* ---------- The terminal: a black console window ---------- */
+
+html[data-theme="classic"] .screen {
+  background: #000;
+  border-radius: 0;
+  box-shadow: var(--sunken);
+  border: 2px solid #000;
+  color: #c0c0c0;
+  text-shadow: none;
+  line-height: 1.15;
+  padding: 8px 10px;
+  scrollbar-color: #c0c0c0 #000;
+}
+html[data-theme="classic"] .bezel:focus-within .screen { box-shadow: var(--sunken); }
+html[data-theme="classic"] .term-history { color: #a0a0a0; }
+html[data-theme="classic"] .cursor { background: #c0c0c0; color: #000; }
+html[data-theme="classic"] .bezel:not(:focus-within) .cursor { outline-color: #808080; }
+html[data-theme="classic"] .term-empty code,
+html[data-theme="classic"] .linkish { color: #fff; }
+
+html[data-theme="classic"] .screen-foot { color: #fff; }
+html[data-theme="classic"] .screen-foot .hint,
+html[data-theme="classic"] .screen-foot .field { color: #fff; }
+
+/* ---------- Panel contents ---------- */
+
+html[data-theme="classic"] .hint { color: #404040; }
+html[data-theme="classic"] .reg-name { color: #404040; }
+html[data-theme="classic"] .reg-val { color: #000; }
+html[data-theme="classic"] .reg-val.changed,
+html[data-theme="classic"] .regs .changed { color: #000080; }
+
+html[data-theme="classic"] .flag {
+  background: var(--panel);
+  border: 0;
+  border-radius: 0;
+  box-shadow: var(--raised);
+  color: #000;
+}
+html[data-theme="classic"] .flag.is-set {
+  background: #000080;
+  color: #fff;
+  box-shadow: var(--pressed);
+}
+html[data-theme="classic"] .flag.is-unused,
+html[data-theme="classic"] .flag.is-unused.is-set { opacity: 0.4; background: var(--panel); color: #000; box-shadow: var(--raised); }
+
+/* Lists and the hex dump sit in white, sunken boxes like list views. */
+html[data-theme="classic"] .dis,
+html[data-theme="classic"] .stack,
+html[data-theme="classic"] .hex {
+  background: #fff;
+  box-shadow: var(--sunken);
+  padding: 4px;
+  color: #000;
+}
+html[data-theme="classic"] .dis li:hover,
+html[data-theme="classic"] .hex-byte:hover { background: #dfdfdf; }
+html[data-theme="classic"] .dis .is-pc,
+html[data-theme="classic"] .dis .is-pc .addr,
+html[data-theme="classic"] .dis .is-pc .bytes { background: #000080; color: #fff; }
+html[data-theme="classic"] .dis .addr,
+html[data-theme="classic"] .dis .bytes,
+html[data-theme="classic"] .stack .addr,
+html[data-theme="classic"] .stack .note,
+html[data-theme="classic"] .stack .empty,
+html[data-theme="classic"] .hex-addr { color: #808080; }
+html[data-theme="classic"] .stack .is-top { color: #000080; font-weight: 700; }
+html[data-theme="classic"] .hex-ascii { color: #404040; }
+html[data-theme="classic"] .hex-byte.changed { background: #000080; color: #fff; }
+html[data-theme="classic"] .hex-byte.is-sp { outline-color: #000080; }
+
+html[data-theme="classic"] .port-name,
+html[data-theme="classic"] .kv dt { color: #404040; }
+html[data-theme="classic"] .kv dd { color: #000; }
+html[data-theme="classic"] .io .leds {
+  background: #000;
+  box-shadow: var(--sunken);
+  padding: 5px 7px;
+}
+html[data-theme="classic"] .led.is-input { border-color: #808080; }
+
+/* ---------- Taskbar ---------- */
+
+html[data-theme="classic"] .taskbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 32px;
+  padding: 3px 4px;
+  background: var(--panel);
+  box-shadow: inset 0 1px #dfdfdf, inset 0 2px #fff;
+  z-index: 10;
+}
+html[data-theme="classic"] .taskbar-app {
+  min-width: 150px;
+  padding: 4px 10px;
+  font-weight: 700;
+  box-shadow: var(--pressed);
+  background:
+    repeating-conic-gradient(#c0c0c0 0 25%, #fff 0 50%) 0 0 / 2px 2px;   /* the "active" dither */
+}
+html[data-theme="classic"] .taskbar-clock {
+  margin-left: auto;
+  padding: 4px 12px;
+  box-shadow: var(--sunken);
+  font-variant-numeric: tabular-nums;
+}

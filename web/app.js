@@ -784,6 +784,28 @@
 
   const ROM_KEY = "emu6502.rom";
 
+  /* Theme: "phosphor" (the default look) or "classic" (a 1990s desktop,
+   * styled by theme-classic.css). Stored as data-theme on <html>. */
+  const THEME_KEY = "emu6502.theme";
+  const themeEl = $("#theme");
+  themeEl.value = document.documentElement.dataset.theme || "phosphor";
+  themeEl.addEventListener("change", () => {
+    const theme = themeEl.value;
+    if (theme === "phosphor") delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem(THEME_KEY, theme); } catch (_) { /* not remembered */ }
+    fitFont();               // the terminal font changes with the theme
+  });
+
+  // The clock in the classic theme's taskbar.
+  const clockEl = $("#taskbar-clock");
+  function tickClock() {
+    const t = new Date();
+    clockEl.textContent = `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
+  }
+  tickClock();
+  setInterval(tickClock, 10000);
+
   function loadRom(bytes, remember = true) {
     const size = E.emu_rom_size();
     if (bytes.length === 0 || bytes.length > size) {
